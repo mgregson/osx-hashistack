@@ -22,6 +22,7 @@ Vagrant.configure("2") do |config|
   config.vm.box = "griff/nixos-20.03-x86_64"
 
   config.vm.provider "virtualbox" do |v|
+    v.memory = 2048
     v.customize ["modifyvm", :id, "--acpi", "off"]
   end
 
@@ -34,7 +35,21 @@ Vagrant.configure("2") do |config|
     config.vm.synced_folder d, d
   end
 
-  config.vm.provision :shell, inline: $configure_channels
+  config.vm.provision :install_channels,
+                      type: :shell,
+                      inline: $configure_channels
 
-  config.vm.provision :nixos, path: "configuration.nix"
+  config.vm.provision :nixos,
+                      path: "configuration.nix"
+
+  config.vm.provision :vault_token,
+                      type: :file,
+                      run: :never,
+                      source: ".vault.token",
+                      destination: "/tmp/vault-token"
+
+  config.vm.provision :install_token,
+                      type: :shell,
+                      run: :never,
+                      inline: "mv /tmp/vault-token /etc/nixos/vault-token"
 end

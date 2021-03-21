@@ -2,6 +2,8 @@
 
 let
   unstable = import <unstable> { config = { allowUnfree = true; }; };
+  hasVaultTokenFile = builtins.pathExists /etc/nixos/vault-token;
+  vaultToken = if hasVaultTokenFile then builtins.readFile /etc/nixos/vault-token else "s.pLaCeHoLdEr";
 in
 
 {
@@ -87,9 +89,9 @@ in
           enabled = true;
         };
         vault = {
-          enabled = true;
+          enabled = hasVaultTokenFile;
           address = "http://vault.service.consul:8200";
-          token = "s.jkwi6CVRokaF9VPIKUQbSfVO";
+          token = vaultToken;
         };
         advertise = {
           http = "172.17.0.1";

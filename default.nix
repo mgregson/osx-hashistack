@@ -32,6 +32,9 @@ mkShell {
       export VAULT_TOKEN=`echo "$VAULT_DATA" | jq -j '.root_token'`
       echo "$VAULT_TOKEN" > .vault.token
       echo "$VAULT_KEY" > .vault.key
+      vagrant provision --provision-with vault_token
+      vagrant provision --provision-with install_token
+      vagrant provision --provision-with nixos
     fi
     if [[ -f .vault.token ]]
     then
