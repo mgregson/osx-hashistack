@@ -8,7 +8,6 @@ env {
   buildInputs = [
     consul
     nomad
-    jq
     docker
     docker-compose
   ];

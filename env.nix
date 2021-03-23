@@ -27,6 +27,7 @@ let
 
   sharedHooks = {
     shellHook = ''
+      vagrant plugin install vagrant-nixos-plugin
       if [[ ! -e Vagrantfile ]]
       then
         ln -s ${./Vagrantfile} Vagrantfile
