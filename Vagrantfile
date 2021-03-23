@@ -42,14 +42,16 @@ Vagrant.configure("2") do |config|
   config.vm.provision :nixos,
                       path: "configuration.nix"
 
-  config.vm.provision :vault_token,
-                      type: :file,
-                      run: :never,
-                      source: ".vault.token",
-                      destination: "/tmp/vault-token"
+  if File.exist?(".vault.token")
+    config.vm.provision :vault_token,
+                        type: :file,
+                        run: :never,
+                        source: ".vault.token",
+                        destination: "/tmp/vault-token"
 
-  config.vm.provision :install_token,
-                      type: :shell,
-                      run: :never,
-                      inline: "mv /tmp/vault-token /etc/nixos/vault-token"
+    config.vm.provision :install_token,
+                        type: :shell,
+                        run: :never,
+                        inline: "mv /tmp/vault-token /etc/nixos/vault-token"
+  end
 end
