@@ -46,8 +46,8 @@ let
         VAULT_DATA=`vault operator init -format=json --key-shares=1 --key-threshold=1`
         export VAULT_KEY=`echo "$VAULT_DATA" | jq -j '.unseal_keys_b64[0]'`
         export VAULT_TOKEN=`echo "$VAULT_DATA" | jq -j '.root_token'`
-        echo "$VAULT_TOKEN" > .vault.token
-        echo "$VAULT_KEY" > .vault.key
+        echo -n "$VAULT_TOKEN" > .vault.token
+        echo -n "$VAULT_KEY" > .vault.key
         vagrant provision --provision-with vault_token
         vagrant provision --provision-with install_token
         vagrant provision --provision-with nixos
