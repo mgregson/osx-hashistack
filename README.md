@@ -90,6 +90,29 @@ your shell configured to interact with it. Just navigate to the base of the
 project and run `nix-shell` - your shell session will be configured with all
 of the tools and environment variables for the project.
 
+### Adding an Environment to your Project
+To add an environment just like this to your project you can import `env.nix` as
+a function and call it:
+```
+{ pkgs ? import <nixpkgs> {} }:
+with pkgs;
+
+let
+  envkit = fetchFromGitHub {
+    owner = "mgregson";
+    repo = "osx-hashistack";
+    rev = "release/0.2.0";
+    sha256 = "1ysbcjq3dl6giha9xb600l2c2k5pa8im3j02vbhlk8sjr8cwgc88";
+  };
+  mkEnv = import "${envkit}/env.nix" { inherit pkgs; };
+in
+
+mkEnv {
+  buildInputs = [
+  ];
+}
+```
+
 ## Without Nix
 Getting going without Nix is a more involved process:
  - Run `vagrant up` to start the VM.
