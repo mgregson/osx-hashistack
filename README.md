@@ -113,6 +113,32 @@ mkEnv {
 }
 ```
 
+#### Exposing Additional Ports
+You can expose additional ports in your project's environment by adding the
+`extraExposedPorts` name to the attrset given to `env.nix`:
+```
+{ pkgs ? import <nixpkgs> {} }:
+with pkgs;
+
+let
+  envkit = fetchFromGitHub {
+    owner = "mgregson";
+    repo = "osx-hashistack";
+    rev = "release/0.2.0";
+    sha256 = "1ysbcjq3dl6giha9xb600l2c2k5pa8im3j02vbhlk8sjr8cwgc88";
+  };
+  mkEnv = import "${envkit}/env.nix" { inherit pkgs; };
+in
+
+mkEnv {
+  extraExposedPorts = [
+    2001
+  ];
+}
+```
+
+`extraExposedPorts` should be a list of integers.
+
 ## Without Nix
 Getting going without Nix is a more involved process:
  - Run `vagrant up` to start the VM.
