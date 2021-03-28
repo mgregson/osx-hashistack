@@ -122,3 +122,7 @@ If you're using this, let me know! Contributions welcome!
  - There's probably a way to use nix more effectively in setting up the
    environment. I suspect that would be better than using a wrapped shell
    script.
+ - Replace this entire thing with a customized VM image inside Docker Desktop
+   for Mac, removing the dependence on vagrant and VirtualBox entirely. This is
+   probably also a better path towards supporting Apple Silicon. It would likely
+   also be _faster_.
