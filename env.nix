@@ -8,9 +8,219 @@ with pkgs;
   nativeBuildInputs ? [],
   propagatedBuildInputs ? [],
   propagatedNativeBuildInputs ? [],
+  extraExposedPorts ? [],
   ...
 }@attrs:
 let
+  defaultExposedPorts = [4646 8500 8200];
+  exposedPorts = defaultExposedPorts ++ extraExposedPorts;
+  configurationfile = writeTextFile {
+    name = "configuration.nix";
+    text = ''
+{config, pkgs, ...}:
+
+let
+  unstable = import <unstable> { config = { allowUnfree = true; }; };
+  hasVaultTokenFile = builtins.pathExists /etc/nixos/vault-token;
+  vaultToken = if hasVaultTokenFile then builtins.readFile /etc/nixos/vault-token else "s.pLaCeHoLdEr";
+in
+
+{
+  imports = [
+    <unstable/nixos/modules/services/networking/nomad.nix>
+  ];
+
+  nixpkgs.config.packageOverrides = pkgs: {
+    formats = unstable.formats;
+  };
+
+  environment = {
+    etc = {
+      "docker/daemon.json" = {
+        text = '''
+          {
+            "bip": "172.17.0.1/24",
+            "dns": ["172.17.0.1"]
+          }
+        ''';
+      };
+    };
+  };
+
+  networking = {
+    firewall = {
+      trustedInterfaces = [
+        "docker0"
+      ];
+      allowedTCPPortRanges = [
+        { from = 1024; to = 65535; }
+      ];
+      allowedUDPPortRanges = [
+        { from = 1024; to = 65535; }
+      ];
+    };
+    resolvconf = {
+      useLocalResolver = true;
+    };
+  };
+
+  services = {
+    consul = {
+      enable = true;
+      dropPrivileges = false;
+      extraConfig = {
+        bootstrap = true;
+        bootstrap_expect = 1;
+        recursors = [ "10.0.2.3" ];
+        server = true;
+        addresses = {
+          http = "0.0.0.0";
+          dns = "0.0.0.0";
+        };
+        ports = {
+          dns = 53;
+        };
+        advertise_addr = "{{ GetPrivateInterfaces | include \"network\" \"172.16.0.0/16\" | attr \"address\" }}";
+      };
+      webUi = true;
+    };
+    vault = {
+      enable = true;
+      package = unstable.vault-bin;
+      address = "0.0.0.0:8200";
+      storageBackend = "consul";
+      extraConfig = '''
+        api_addr = "http://172.17.0.1:8200"
+        ui = true
+        service_registration "consul" {
+          address = "127.0.0.1:8500"
+        }
+      ''';
+    };
+    nomad = {
+      enable = true;
+      settings = {
+        server = {
+          enabled = true;
+          bootstrap_expect = 1;
+        };
+        client = {
+          enabled = true;
+        };
+        vault = {
+          enabled = hasVaultTokenFile;
+          address = "http://vault.service.consul:8200";
+          token = vaultToken;
+        };
+        advertise = {
+          http = "172.17.0.1";
+        };
+      };
+    };
+  };
+
+  virtualisation = {
+    docker = {
+      enable = true;
+      enableOnBoot = true;
+      listenOptions = [
+        "/run/docker.sock"
+        "0.0.0.0:2375"
+      ];
+    };
+  };
+
+  fileSystems = {
+    "/Users" = {
+      device = "/Users";
+      fsType = "vboxsf";
+      options = [
+        "uid=1000"
+        "gid=999"
+        "nofail"
+      ];
+    };
+
+    "/Volumes" = {
+      device = "/Volumes";
+      fsType = "vboxsf";
+      options = [
+        "uid=1000"
+        "gid=999"
+        "nofail"
+      ];
+    };
+
+    "/private" = {
+      device = "/private";
+      fsType = "vboxsf";
+      options = [
+        "uid=1000"
+        "gid=999"
+        "nofail"
+      ];
+    };
+  };
+}
+    '';
+  };
+
+  vagrantfile = writeTextFile {
+    name = "Vagrantfile";
+    text = ''
+      $configure_channels = <<-'SCRIPT'
+      nix-channel --add https://nixos.org/channels/nixos-unstable unstable
+      nix-channel --update
+      SCRIPT
+
+      $dirs = [
+        "/Users",
+        "/Volumes",
+        "/private",
+      ]
+
+      $ports = [${(lib.strings.concatStrings (lib.strings.intersperse "," (map toString exposedPorts)))}]
+
+      Vagrant.configure("2") do |config|
+        config.vm.box = "griff/nixos-20.03-x86_64"
+
+        config.vm.provider "virtualbox" do |v|
+          v.memory = 2048
+          v.customize ["modifyvm", :id, "--acpi", "off"]
+        end
+
+        $ports.each do |p|
+          config.vm.network "forwarded_port", guest: p, host: p, protocol: "tcp"
+        end
+
+        config.vm.synced_folder '.', '/vagrant', disabled: true
+        $dirs.each do |d|
+          config.vm.synced_folder d, d
+        end
+
+        config.vm.provision :install_channels,
+                            type: :shell,
+                            inline: $configure_channels
+
+        config.vm.provision :nixos,
+                            path: "${configurationfile}"
+
+        if File.exist?(".vault.token")
+          config.vm.provision :vault_token,
+                              type: :file,
+                              run: :never,
+                              source: ".vault.token",
+                              destination: "/tmp/vault-token"
+
+          config.vm.provision :install_token,
+                              type: :shell,
+                              run: :never,
+                              inline: "mv /tmp/vault-token /etc/nixos/vault-token"
+        end
+      end
+    '';
+  };
+
   mergeInputs = name: lib.concatLists (lib.catAttrs name
     ([attrs] ++ inputsFrom));
 
@@ -21,6 +231,7 @@ let
     "propagatedBuildInputs"
     "propagatedNativeBuildInputs"
     "shellHook"
+    "exposedPorts"
     "VAULT_ADDR"
     "DOCKER_HOST"
   ];
@@ -28,14 +239,6 @@ let
   sharedHooks = {
     shellHook = ''
       vagrant plugin install vagrant-nixos-plugin
-      if [[ ! -e Vagrantfile ]]
-      then
-        ln -s ${./Vagrantfile} Vagrantfile
-      fi
-      if [[ ! -e configuration.nix ]]
-      then
-        ln -s ${./configuration.nix} configuration.nix
-      fi
       if [[ `vagrant status --machine-readable | grep "default,state," | cut -d, -f4` != "running" ]]
       then
         vagrant up --no-tty
@@ -100,4 +303,5 @@ stdenv.mkDerivation ({
 
   VAULT_ADDR = "http://127.0.0.1:8200";
   DOCKER_HOST = "tcp://127.0.0.1:2375";
+  VAGRANT_VAGRANTFILE = vagrantfile;
 } // rest)
