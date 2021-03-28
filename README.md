@@ -126,3 +126,5 @@ If you're using this, let me know! Contributions welcome!
    for Mac, removing the dependence on vagrant and VirtualBox entirely. This is
    probably also a better path towards supporting Apple Silicon. It would likely
    also be _faster_.
+ - Pull the `Vagrantfile` and `configuration.nix` templates back out into their
+   own files so that they're easier to maintain.
