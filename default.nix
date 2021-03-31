@@ -11,4 +11,5 @@ env {
     docker
     docker-compose
   ];
+  vmCpus = 2;
 }

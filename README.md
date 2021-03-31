@@ -139,6 +139,54 @@ mkEnv {
 
 `extraExposedPorts` should be a list of integers.
 
+#### Configuring CPUs for the VM
+You can configure the number of CPUs (cores) allocated to the VM by setting the
+`vmCpus` option in the attrset given to `env.nix`:
+```
+{ pkgs ? import <nixpkgs> {} }:
+with pkgs;
+
+let
+  envkit = fetchFromGitHub {
+    owner = "mgregson";
+    repo = "osx-hashistack";
+    rev = "release/0.2.0";
+    sha256 = "1ysbcjq3dl6giha9xb600l2c2k5pa8im3j02vbhlk8sjr8cwgc88";
+  };
+  mkEnv = import "${envkit}/env.nix" { inherit pkgs; };
+in
+
+mkEnv {
+  vmCpus = 7
+}
+```
+
+`vmCpus` should be an integer. Default: 1
+
+#### Configuring Memory for the VM
+You can configure the amount of RAM allocated to the VM by setting the
+`vmMemory` option in the attrset given to `env.nix`:
+```
+{ pkgs ? import <nixpkgs> {} }:
+with pkgs;
+
+let
+  envkit = fetchFromGitHub {
+    owner = "mgregson";
+    repo = "osx-hashistack";
+    rev = "release/0.2.0";
+    sha256 = "1ysbcjq3dl6giha9xb600l2c2k5pa8im3j02vbhlk8sjr8cwgc88";
+  };
+  mkEnv = import "${envkit}/env.nix" { inherit pkgs; };
+in
+
+mkEnv {
+  vmMemory = 7
+}
+```
+
+`vmMemory` should be an integer. Default: 2048
+
 ## Without Nix
 Getting going without Nix is a more involved process:
  - Run `vagrant up` to start the VM.

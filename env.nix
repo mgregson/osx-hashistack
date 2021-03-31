@@ -9,6 +9,8 @@ with pkgs;
   propagatedBuildInputs ? [],
   propagatedNativeBuildInputs ? [],
   extraExposedPorts ? [],
+  vmCpus ? 1,
+  vmMemory ? 2048,
   ...
 }@attrs:
 let
@@ -185,7 +187,8 @@ in
         config.vm.box = "griff/nixos-20.03-x86_64"
 
         config.vm.provider "virtualbox" do |v|
-          v.memory = 2048
+          v.cpus = ${toString vmCpus}
+          v.memory = ${toString vmMemory}
           v.customize ["modifyvm", :id, "--acpi", "off"]
         end
 
